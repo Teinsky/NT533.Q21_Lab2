@@ -6,6 +6,7 @@ from tabs.tab_router import RouterTab
 from tabs.tab_instance import InstanceTab
 from tabs.tab_floating_ip import FloatingIPTab
 from tabs.tab_constraints import ConstraintsTab
+from tabs.tab_lb_scaling import LBScalingTab
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -78,6 +79,9 @@ class MainApp(ctk.CTk):
         ctk.CTkButton(nav_frame, text="3. Routers", command=lambda: self.show_tab("Router")).pack(pady=5, fill="x")
         ctk.CTkButton(nav_frame, text="4. Instances", command=lambda: self.show_tab("Instance")).pack(pady=5, fill="x")
         ctk.CTkButton(nav_frame, text="5. Floating IPs", command=lambda: self.show_tab("FloatingIP")).pack(pady=5, fill="x")
+        
+        # ĐÂY LÀ CHỖ CHÈN NÚT BẤM CHO TÂM
+        ctk.CTkButton(nav_frame, text="6. Cân Bằng Tải & Scale", command=lambda: self.show_tab("LBScaling"), fg_color="#8e44ad", hover_color="#9b59b6").pack(pady=5, fill="x")
 
     def show_tab(self, tab_name):
         if self.current_tab is not None:
@@ -89,6 +93,9 @@ class MainApp(ctk.CTk):
         elif tab_name == "Router": self.current_tab = RouterTab(self.main_frame, self.api)
         elif tab_name == "Instance": self.current_tab = InstanceTab(self.main_frame, self.api)
         elif tab_name == "FloatingIP": self.current_tab = FloatingIPTab(self.main_frame, self.api)
+        
+        # ĐÂY LÀ CHỖ KHAI BÁO CLASS TAB CHO TÂM
+        elif tab_name == "LBScaling": self.current_tab = LBScalingTab(self.main_frame, self.api)
             
         self.current_tab.pack(fill="both", expand=True)
 

@@ -8,7 +8,8 @@ class OpenStackAPI:
         self.network_url = "https://cloud-network.uitiot.vn/v2.0"
         self.image_url = "https://cloud-image.uitiot.vn/v2"
         self.token = None
-
+        self.lb_base_url = "https://cloud-loadbalancer.uitiot.vn"
+        
     def login(self, username, password, project_name):
         payload = {
             "auth": {
@@ -19,6 +20,8 @@ class OpenStackAPI:
         res = requests.post(self.auth_url, json=payload)
         if res.status_code == 201:
             self.token = res.headers.get('X-Subject-Token')
+        
+                    
             return True
         return False
 
@@ -30,23 +33,20 @@ class OpenStackAPI:
         if res.status_code == 200:
             return res.json().get("limits", {}).get("absolute", {})
         return {}
+
     # --- LISTING (GET) ---
     def get_internal_subnets(self):
-        # 1. Lấy danh sách các mạng nội bộ (Không phải external)
         nets = requests.get(f"{self.network_url}/networks?router:external=False", headers=self.get_headers()).json().get('networks', [])
         internal_net_ids = [n['id'] for n in nets]
         
-        # 2. Lấy tất cả subnet và chỉ giữ lại những subnet thuộc mạng nội bộ
         subnets = requests.get(f"{self.network_url}/subnets", headers=self.get_headers()).json().get('subnets', [])
         return [s for s in subnets if s['network_id'] in internal_net_ids]
 
     def get_router_attached_subnets(self, router_id):
-        # Lấy danh sách các cổng (ports) đang cắm vào Router này
         res = requests.get(f"{self.network_url}/ports?device_id={router_id}", headers=self.get_headers())
         ports = res.json().get('ports', [])
         subnet_ids = []
         for p in ports:
-            # Chỉ lấy những cổng đóng vai trò là interface nối xuống mạng nội bộ
             if p.get('device_owner') == 'network:router_interface':
                 for ip in p.get('fixed_ips', []):
                     subnet_ids.append(ip.get('subnet_id'))
@@ -98,9 +98,7 @@ class OpenStackAPI:
     def create_subnet(self, net_id, name, cidr):
         payload = {"subnet": {"network_id": net_id, "ip_version": 4, "cidr": cidr, "name": name}}
         res = requests.post(f"{self.network_url}/subnets", json=payload, headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Unknown error when creating subnet')
-            raise Exception(err_msg)
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Unknown error'))
         return res.json()
 
     def create_router(self, name):
@@ -115,12 +113,7 @@ class OpenStackAPI:
     def add_router_interface(self, router_id, subnet_id):
         payload = {"subnet_id": subnet_id}
         res = requests.put(f"{self.network_url}/routers/{router_id}/add_router_interface", json=payload, headers=self.get_headers())
-        
-        # Bắt lỗi nếu OpenStack từ chối
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Lỗi không xác định')
-            raise Exception(err_msg)
-            
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Lỗi không xác định'))
         return res.json()
 
     def create_instance(self, name, flavor_id, image_id, net_id, user_data):
@@ -148,44 +141,26 @@ class OpenStackAPI:
 
     def remove_router_interface(self, router_id, subnet_id):
         payload = {"subnet_id": subnet_id}
-        res = requests.put(f"{self.network_url}/routers/{router_id}/remove_router_interface", 
-                           json=payload, headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Loi khi go interface')
-            raise Exception(err_msg)
-        return res.json()
-    def remove_router_interface(self, router_id, subnet_id):
-        payload = {"subnet_id": subnet_id}
         res = requests.put(f"{self.network_url}/routers/{router_id}/remove_router_interface", json=payload, headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Unknown error when removing interface')
-            raise Exception(err_msg)
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Unknown error'))
         return res.json()
 
     # --- DELETE (DELETE) ---
     def delete_network(self, net_id):
         res = requests.delete(f"{self.network_url}/networks/{net_id}", headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Unknown error when deleting network')
-            raise Exception(err_msg)
+        if res.status_code >= 400: raise Exception('Lỗi xóa mạng')
 
     def delete_subnet(self, subnet_id):
         res = requests.delete(f"{self.network_url}/subnets/{subnet_id}", headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Unknown error when deleting subnet')
-            raise Exception(err_msg)
+        if res.status_code >= 400: raise Exception('Lỗi xóa subnet')
 
     def delete_router(self, router_id):
         res = requests.delete(f"{self.network_url}/routers/{router_id}", headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('NeutronError', {}).get('message', 'Unknown error when deleting router')
-            raise Exception(err_msg)
+        if res.status_code >= 400: raise Exception('Lỗi xóa router')
         
     def delete_instance(self, server_id):
         res = requests.delete(f"{self.compute_url}/servers/{server_id}", headers=self.get_headers())
-        if res.status_code >= 400:
-            err_msg = res.json().get('badRequest', {}).get('message', 'Unknown error when deleting instance')
-            raise Exception(err_msg)
+        if res.status_code >= 400: raise Exception('Lỗi xóa máy ảo')
 
     # --- FLOATING IP (CAU 6) ---
     def get_floating_ips(self):
@@ -199,14 +174,13 @@ class OpenStackAPI:
         return res.json().get("floatingip", {})
 
     def associate_floating_ip(self, server_id, fip_id):
-        # Tim Port ID cua may ao
         ports_res = requests.get(f"{self.network_url}/ports?device_id={server_id}", headers=self.get_headers())
         ports = ports_res.json().get("ports", [])
         if ports:
             port_id = ports[0]['id']
-            # Gan IP vao Port
             requests.put(f"{self.network_url}/floatingips/{fip_id}", json={"floatingip": {"port_id": port_id}}, headers=self.get_headers())
-# --- CAC HAM CHI TIET MAY AO (INSTANCE DETAILS) ---
+
+    # --- CAC HAM CHI TIET MAY AO (INSTANCE DETAILS) ---
     def get_instance_interfaces(self, server_id):
         res = requests.get(f"{self.network_url}/ports?device_id={server_id}", headers=self.get_headers())
         return res.json().get('ports', [])
@@ -214,20 +188,53 @@ class OpenStackAPI:
     def get_instance_log(self, server_id, length=35):
         payload = {"os-getConsoleOutput": {"length": length}}
         res = requests.post(f"{self.compute_url}/servers/{server_id}/action", json=payload, headers=self.get_headers())
-        if res.status_code == 200:
-            return res.json().get("output", "")
-        return "Khong the lay log (May ao co the dang tat hoac chua khoi dong xong)."
+        if res.status_code == 200: return res.json().get("output", "")
+        return "Khong the lay log."
 
     def get_instance_console(self, server_id):
-        # Su dung noVNC console mac dinh cua OpenStack
         payload = {"os-getVNCConsole": {"type": "novnc"}}
         res = requests.post(f"{self.compute_url}/servers/{server_id}/action", json=payload, headers=self.get_headers())
-        if res.status_code == 200:
-            return res.json().get("console", {}).get("url", "Khong tim thay URL Console.")
-        return "Loi: Khong the lay duong dan Console tu OpenStack."
+        if res.status_code == 200: return res.json().get("console", {}).get("url", "")
+        return "Loi: Khong the lay duong dan Console."
 
     def get_instance_actions(self, server_id):
         res = requests.get(f"{self.compute_url}/servers/{server_id}/os-instance-actions", headers=self.get_headers())
-        if res.status_code == 200:
-            return res.json().get("instanceActions", [])
+        if res.status_code == 200: return res.json().get("instanceActions", [])
         return []
+
+    # --- CAC HAM QUAN LY LOAD BALANCER (CAU 7 & 8) ---
+    def get_loadbalancers(self):
+        res = requests.get(f"{self.lb_base_url}/v2.0/lbaas/loadbalancers", headers=self.get_headers())
+        return res.json().get('loadbalancers', [])
+
+    def create_loadbalancer(self, name, subnet_id):
+        payload = {"loadbalancer": {"name": name, "vip_subnet_id": subnet_id, "admin_state_up": True}}
+        res = requests.post(f"{self.lb_base_url}/v2.0/lbaas/loadbalancers", json=payload, headers=self.get_headers())
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Loi tao LB'))
+        return res.json().get('loadbalancer')
+
+    def create_listener(self, lb_id, name):
+        payload = {"listener": {"name": name, "loadbalancer_id": lb_id, "protocol": "HTTP", "protocol_port": 80}}
+        res = requests.post(f"{self.lb_base_url}/v2.0/lbaas/listeners", json=payload, headers=self.get_headers())
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Loi tao Listener'))
+        return res.json().get('listener')
+
+    def create_pool(self, listener_id, name):
+        payload = {"pool": {"name": name, "listener_id": listener_id, "lb_algorithm": "ROUND_ROBIN", "protocol": "HTTP"}}
+        res = requests.post(f"{self.lb_base_url}/v2.0/lbaas/pools", json=payload, headers=self.get_headers())
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Loi tao Pool'))
+        return res.json().get('pool')
+
+    def get_pool_members(self, pool_id):
+        res = requests.get(f"{self.lb_base_url}/v2.0/lbaas/pools/{pool_id}/members", headers=self.get_headers())
+        return res.json().get('members', [])
+
+    def add_pool_member(self, pool_id, subnet_id, ip_address):
+        payload = {"member": {"address": ip_address, "protocol_port": 80, "subnet_id": subnet_id}}
+        res = requests.post(f"{self.lb_base_url}/v2.0/lbaas/pools/{pool_id}/members", json=payload, headers=self.get_headers())
+        if res.status_code >= 400: raise Exception(res.json().get('NeutronError', {}).get('message', 'Loi them Member'))
+        return res.json().get('member')
+
+    def remove_pool_member(self, pool_id, member_id):
+        res = requests.delete(f"{self.lb_base_url}/v2.0/lbaas/pools/{pool_id}/members/{member_id}", headers=self.get_headers())
+        if res.status_code >= 400: raise Exception('Loi xoa Member')
