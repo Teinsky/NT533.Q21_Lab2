@@ -33,12 +33,12 @@ class InstanceDetailsWindow(ctk.CTkToplevel):
             ip_info += f"  - {net_name}: {ips}\n"
 
         info = (
-            f"Ten May Ao: {self.instance.get('name')}\n\n"
+            f"Tên Máy ảo: {self.instance.get('name')}\n\n"
             f"ID: {self.instance.get('id')}\n\n"
-            f"Trang thai (Status): {self.instance.get('status')}\n\n"
+            f"Trạng thái (Status): {self.instance.get('status')}\n\n"
             f"Availability Zone: {self.instance.get('OS-EXT-AZ:availability_zone')}\n\n"
             f"Power State: {self.instance.get('OS-EXT-STS:power_state')}\n\n"
-            f"Dia chi IP:\n{ip_info}"
+            f"Địa chỉ IP:\n{ip_info}"
         )
         ctk.CTkLabel(self.tab_overview, text=info, font=("Roboto", 14), justify="left").pack(anchor="w", padx=20, pady=20)
 
@@ -48,14 +48,14 @@ class InstanceDetailsWindow(ctk.CTkToplevel):
         
         ports = self.api.get_instance_interfaces(self.instance['id'])
         if not ports:
-            ctk.CTkLabel(list_interfaces, text="Khong tim thay interface nao.").pack(pady=10)
+            ctk.CTkLabel(list_interfaces, text="Không tìm thấy interface nào.").pack(pady=10)
             
         for port in ports:
             row = ctk.CTkFrame(list_interfaces)
             row.pack(fill="x", pady=2)
             
             ips = ", ".join([ip.get('ip_address') for ip in port.get('fixed_ips', [])])
-            info = f"MAC: {port.get('mac_address')} | IP: {ips} | Trang thai: {port.get('status')} | Mang ID: {port.get('network_id')[:10]}..."
+            info = f"MAC: {port.get('mac_address')} | IP: {ips} | Trạng thái: {port.get('status')} | Mạng ID: {port.get('network_id')[:10]}..."
             ctk.CTkLabel(row, text=info).pack(side="left", padx=10, pady=10)
 
     def setup_log(self):
@@ -83,12 +83,12 @@ class InstanceDetailsWindow(ctk.CTkToplevel):
 
     def setup_console(self):
         ctk.CTkLabel(self.tab_console, text="VNC Console URL", font=("Roboto", 16, "bold")).pack(pady=(20, 5))
-        ctk.CTkLabel(self.tab_console, text="Copy duong dan duoi day va dan vao trinh duyet de dieu khien may ao:").pack(pady=5)
+        ctk.CTkLabel(self.tab_console, text="Copy đường dẫn dưới đây và dán vào trình duyệt để điều khiển máy ảo:").pack(pady=5)
         
         self.textbox_console = ctk.CTkTextbox(self.tab_console, height=60)
         self.textbox_console.pack(fill="x", padx=20, pady=10)
         
-        ctk.CTkButton(self.tab_console, text="Lay URL Console", command=self.load_console).pack(pady=10)
+        ctk.CTkButton(self.tab_console, text="Lấy URL Console", command=self.load_console).pack(pady=10)
 
     def load_console(self):
         url = self.api.get_instance_console(self.instance['id'])
@@ -101,13 +101,13 @@ class InstanceDetailsWindow(ctk.CTkToplevel):
         
         actions = self.api.get_instance_actions(self.instance['id'])
         if not actions:
-            ctk.CTkLabel(list_actions, text="Khong co lich su hanh dong.").pack(pady=10)
+            ctk.CTkLabel(list_actions, text="Không có lịch sử hành động nào.").pack(pady=10)
             
         for act in actions:
             row = ctk.CTkFrame(list_actions)
             row.pack(fill="x", pady=2)
             
-            info = f"Hanh dong: {act.get('action')} | Thoi gian: {act.get('start_time')} | Request ID: {act.get('request_id')}"
+            info = f"Hành động: {act.get('action')} | Thời gian: {act.get('start_time')} | Request ID: {act.get('request_id')}"
             ctk.CTkLabel(row, text=info).pack(side="left", padx=10, pady=10)
 
 
@@ -121,15 +121,15 @@ class InstanceTab(ctk.CTkFrame):
         self.image_map = {}
         self.network_map = {}
 
-        ctk.CTkLabel(self, text="4. Khoi tao May ao (Launch Instance)", font=("Roboto", 20, "bold")).pack(pady=10, anchor="w", padx=10)
+        ctk.CTkLabel(self, text="4. Khởi tạo Máy ảo (Launch Instance)", font=("Roboto", 20, "bold")).pack(pady=10, anchor="w", padx=10)
 
         self.form = ctk.CTkFrame(self)
         self.form.pack(fill="x", pady=10, padx=10)
 
-        ctk.CTkLabel(self.form, text="Ten may ao:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        ctk.CTkLabel(self.form, text="Cau hinh (Flavor):").grid(row=1, column=0, padx=10, pady=10, sticky="w")
-        ctk.CTkLabel(self.form, text="He dieu hanh (Image):").grid(row=2, column=0, padx=10, pady=10, sticky="w")
-        ctk.CTkLabel(self.form, text="Mang noi bo:").grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(self.form, text="Tên máy ảo:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(self.form, text="Cấu hình (Flavor):").grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(self.form, text="Hệ điều hành (Image):").grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(self.form, text="Mạng nội bộ:").grid(row=3, column=0, padx=10, pady=10, sticky="w")
 
         self.entry_name = ctk.CTkEntry(self.form, width=250)
         self.entry_name.grid(row=0, column=1, padx=10, pady=10)
@@ -155,7 +155,7 @@ class InstanceTab(ctk.CTkFrame):
         self.lbl_status = ctk.CTkLabel(self.form, text="")
         self.lbl_status.grid(row=5, column=0, columnspan=3, pady=5)
 
-        self.list_frame = ctk.CTkScrollableFrame(self, label_text="Danh sach may ao dang chay")
+        self.list_frame = ctk.CTkScrollableFrame(self, label_text="Danh sách máy ảo đang chạy")
         self.list_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.load_dropdowns()
@@ -185,14 +185,14 @@ class InstanceTab(ctk.CTkFrame):
             row = ctk.CTkFrame(self.list_frame)
             row.pack(fill="x", pady=2)
             
-            ctk.CTkLabel(row, text=f"Ten: {srv['name']} | Trang thai: {srv['status']}").pack(side="left", padx=10)
+            ctk.CTkLabel(row, text=f"Ten: {srv['name']} | Trạng thái: {srv['status']}").pack(side="left", padx=10)
             
             btn_frame = ctk.CTkFrame(row, fg_color="transparent")
             btn_frame.pack(side="right")
             
-            ctk.CTkButton(btn_frame, text="Xoa", fg_color="#c0392b", width=60, 
+            ctk.CTkButton(btn_frame, text="Xóa", fg_color="#c0392b", width=60, 
                           command=lambda s_id=srv['id']: self.delete_vm(s_id)).pack(side="right", padx=5)
-            ctk.CTkButton(btn_frame, text="Chi tiet", fg_color="#2980b9", width=60, 
+            ctk.CTkButton(btn_frame, text="Chi tiết", fg_color="#2980b9", width=60, 
                           command=lambda s_data=srv: self.open_details(s_data)).pack(side="right", padx=5)
 
     def open_details(self, instance_data):
@@ -207,10 +207,10 @@ class InstanceTab(ctk.CTkFrame):
         
         if name and f_id and img_id and net_id:
             try:
-                self.lbl_status.configure(text="Dang gui request tao may ao...", text_color="white")
+                self.lbl_status.configure(text="Đang gửi yêu cầu tạo máy ảo...", text_color="white")
                 self.update()
                 self.api.create_instance(name, f_id, img_id, net_id, udata)
-                self.lbl_status.configure(text="[SUCCESS] Da gui lenh tao may ao. Vui long doi he thong khoi dong.", text_color="green")
+                self.lbl_status.configure(text="[SUCCESS] Đã gửi lệnh tạo máy ảo. Vui lòng đợi hệ thống khởi động.", text_color="green")
                 self.load_instances()
             except Exception as e:
                 self.lbl_status.configure(text=f"[ERROR] {str(e)}", text_color="red")
